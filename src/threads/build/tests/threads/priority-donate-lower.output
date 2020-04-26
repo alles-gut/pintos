@@ -1,0 +1,5 @@
+qemu-system-i386 -hda /tmp/p9DAqFkfD6.dsk -m 4 -net none -nographic -monitor null
+PiLo hda1
+Loading.........
+
+TIMEOUT after 64 seconds of wall-clock time - load average: 1.14, 1.08, 0.74
