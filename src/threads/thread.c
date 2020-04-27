@@ -73,6 +73,9 @@ void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 static bool compare_priority (const struct list_elem *, const struct list_elem *, void* aux);
 
+// Variable of alarm clock
+static int64_t next_tick;
+static struct list sleep_list;
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -95,6 +98,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&sleep_list);	// init sleep_list
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -102,6 +106,57 @@ thread_init (void)
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
 }
+
+// Alarm clock function
+void update_next_tick(int64_t ticks){
+  if(next_tick > ticks) next_tick = ticks;
+}
+
+int64_t get_next_tick(void){
+  return next_tick;
+}
+
+void thread_sleep(int64_t ticks){
+  struct thread *thr;	// declare thread
+  
+  // ban interrupt and save old level
+  enum intr_level old_level;
+  old_level = intr_disable();
+
+  // idle thread must not sleep
+  thr = thread_current();
+  ASSERT(thr != idle_thread);
+
+  // update tick and push to sleep list
+  thr->wakeup_time = ticks;
+  update_next_tick(thr->wakeup_time);
+  list_push_back(&sleep_list, &thr->wakeup_time);
+
+  // block thread until reschedule
+  thread_block();
+
+  // reactivate interrupt
+  intr_set_level(old_level); 
+}
+
+void thread_awake(int64_t awake_tick){
+  struct list_elem *e;		// declare list for loop
+
+  for(e = list_begin(&sleep_list); e != list_end(&sleep_list);){	// until sleep list end
+    // get thread inside of sleep list
+    struct thread *thr = list_entry(e, struct thread, elem);
+
+    // determine let thread sleep or awake
+    if(awake_tick < thr->wakeup_time){		// if thread isn't time for awake
+      e = list_next(e);				// find next element
+      update_next_tick(thr -> wakeup_time);	// update next closest tick
+    }else{			// if thread need to awake
+      e = list_remove(e);	// remove thread from sleep list
+      thread_unblock(thr);	// unblock the tread
+    }
+  }
+}
+
 
 /* Starts preemptive thread scheduling by enabling interrupts.
    Also creates the idle thread. */
