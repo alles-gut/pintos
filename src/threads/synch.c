@@ -33,7 +33,7 @@
 #include "threads/thread.h"
 
 static bool compare_priority (const struct list_elem *, const struct list_elem *, void*aux);
-
+static bool compare_priority_sema (const struct list_elem *, const struct list_elem *, void* aux);
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -201,6 +201,7 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
+  
 
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
@@ -301,7 +302,7 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
-  list_push_back (&cond->waiters, &waiter.elem);
+  list_insert_ordered (&cond->waiters, &waiter.elem, compare_priority, NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
@@ -322,6 +323,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 
+  list_sort(&cond->waiters, compare_priority_sema, NULL);
   if (!list_empty (&cond->waiters)) 
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
@@ -348,6 +350,21 @@ compare_priority (const struct list_elem * a_, const struct list_elem * b_, void
 {
   const struct thread * a = list_entry(a_, struct thread, elem);
   const struct thread * b = list_entry(b_, struct thread, elem);
+
+  return a->priority > b->priority;
+}
+
+static bool
+compare_priority_sema (const struct list_elem * a_, const struct list_elem * b_, void* aux UNUSED)
+{
+  const struct semaphore_elem * ta = list_entry(a_, struct semaphore_elem, elem);
+  const struct semaphore_elem * tb = list_entry(b_, struct semaphore_elem, elem);
+
+  const struct semaphore * tta = &ta->semaphore;
+  const struct semaphore * ttb = &tb->semaphore;
+
+  const struct thread * a = list_entry(list_front(&tta->waiters), struct thread, elem);
+  const struct thread * b = list_entry(list_front(&ttb->waiters), struct thread, elem);
 
   return a->priority > b->priority;
 }
