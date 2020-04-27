@@ -1,5 +1,28 @@
-qemu-system-i386 -hda /tmp/kBa596QWoL.dsk -m 4 -net none -nographic -monitor null
+qemu-system-i386 -hda /tmp/2Fti9MCUMj.dsk -m 4 -net none -nographic -monitor null
 PiLo hda1
 Loading.........
-
-TIMEOUT after 73 seconds of wall-clock time - load average: 1.06, 1.06, 0.69
+Kernel command line: -q run priority-donate-nest
+Pintos booting with 4,096 kB RAM...
+383 pages available in kernel pool.
+383 pages available in user pool.
+Calibrating timer...  312,524,800 loops/s.
+Boot complete.
+Executing 'priority-donate-nest':
+(priority-donate-nest) begin
+(priority-donate-nest) Low thread should have priority 32.  Actual priority: 31.
+(priority-donate-nest) Low thread should have priority 33.  Actual priority: 31.
+(priority-donate-nest) Medium thread should have priority 33.  Actual priority: 32.
+(priority-donate-nest) Medium thread got the lock.
+(priority-donate-nest) High thread got the lock.
+(priority-donate-nest) High thread finished.
+(priority-donate-nest) High thread should have just finished.
+(priority-donate-nest) Middle thread finished.
+(priority-donate-nest) Medium thread should just have finished.
+(priority-donate-nest) Low thread should have priority 31.  Actual priority: 31.
+(priority-donate-nest) end
+Execution of 'priority-donate-nest' complete.
+Timer: 25 ticks
+Thread: 0 idle ticks, 25 kernel ticks, 0 user ticks
+Console: 1062 characters output
+Keyboard: 0 keys pressed
+Powering off...

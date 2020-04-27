@@ -1,5 +1,28 @@
-qemu-system-i386 -hda /tmp/ofNThCHHi7.dsk -m 4 -net none -nographic -monitor null
+qemu-system-i386 -hda /tmp/gNs23X6K9W.dsk -m 4 -net none -nographic -monitor null
 PiLo hda1
 Loading.........
-
-TIMEOUT after 64 seconds of wall-clock time - load average: 1.10, 1.02, 0.61
+Kernel command line: -q run priority-donate-multiple
+Pintos booting with 4,096 kB RAM...
+383 pages available in kernel pool.
+383 pages available in user pool.
+Calibrating timer...  247,398,400 loops/s.
+Boot complete.
+Executing 'priority-donate-multiple':
+(priority-donate-multiple) begin
+(priority-donate-multiple) Main thread should have priority 32.  Actual priority: 31.
+(priority-donate-multiple) Main thread should have priority 33.  Actual priority: 31.
+(priority-donate-multiple) Thread b acquired lock b.
+(priority-donate-multiple) Thread b finished.
+(priority-donate-multiple) Thread b should have just finished.
+(priority-donate-multiple) Main thread should have priority 32.  Actual priority: 31.
+(priority-donate-multiple) Thread a acquired lock a.
+(priority-donate-multiple) Thread a finished.
+(priority-donate-multiple) Thread a should have just finished.
+(priority-donate-multiple) Main thread should have priority 31.  Actual priority: 31.
+(priority-donate-multiple) end
+Execution of 'priority-donate-multiple' complete.
+Timer: 28 ticks
+Thread: 0 idle ticks, 28 kernel ticks, 0 user ticks
+Console: 1105 characters output
+Keyboard: 0 keys pressed
+Powering off...

@@ -1,5 +1,21 @@
-qemu-system-i386 -hda /tmp/UaT73ROujC.dsk -m 4 -net none -nographic -monitor null
+qemu-system-i386 -hda /tmp/GQxSwHJWxZ.dsk -m 4 -net none -nographic -monitor null
 PiLo hda1
 Loading.........
-
-TIMEOUT after 64 seconds of wall-clock time - load average: 1.06, 1.06, 0.71
+Kernel command line: -q run priority-donate-sema
+Pintos booting with 4,096 kB RAM...
+383 pages available in kernel pool.
+383 pages available in user pool.
+Calibrating timer...  287,948,800 loops/s.
+Boot complete.
+Executing 'priority-donate-sema':
+(priority-donate-sema) begin
+(priority-donate-sema) Thread L acquired lock.
+(priority-donate-sema) Thread M finished.
+(priority-donate-sema) Main thread finished.
+(priority-donate-sema) end
+Execution of 'priority-donate-sema' complete.
+Timer: 25 ticks
+Thread: 0 idle ticks, 25 kernel ticks, 0 user ticks
+Console: 551 characters output
+Keyboard: 0 keys pressed
+Powering off...
