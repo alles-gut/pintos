@@ -100,6 +100,9 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
+    // Owned by ../devices/timer.c
+    int64_t wakeup_time;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -139,5 +142,11 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 static bool compare_priority (const struct list_elem *, const struct list_elem *, void *aux);
+
+// timer.c function
+void thread_sleep(int64_t ticks);
+void thread_awake(int64_t ticks);
+int64_t get_next_tick(void);
+void update_next_tick(int64_t ticks);
 
 #endif /* threads/thread.h */
