@@ -128,9 +128,8 @@ void thread_sleep(int64_t ticks){
   ASSERT(thr != idle_thread);
 
   // update tick and push to sleep list
-  thr->wakeup_time = ticks;
-  update_next_tick(thr->wakeup_time);
-  list_push_back(&sleep_list, &thr->wakeup_time);
+  update_next_tick(thr->wakeup_time=ticks);
+  list_push_back(&sleep_list, &thr->elem);
 
   // block thread until reschedule
   thread_block();
@@ -142,16 +141,16 @@ void thread_sleep(int64_t ticks){
 void thread_awake(int64_t awake_tick){
   struct list_elem *e;		// declare list for loop
 
-  for(e = list_begin(&sleep_list); e != list_end(&sleep_list);){	// until sleep list end
+  for(e=list_begin(&sleep_list); e != list_end(&sleep_list);){	// until sleep list end
     // get thread inside of sleep list
     struct thread *thr = list_entry(e, struct thread, elem);
 
     // determine let thread sleep or awake
     if(awake_tick < thr->wakeup_time){		// if thread isn't time for awake
       e = list_next(e);				// find next element
-      update_next_tick(thr -> wakeup_time);	// update next closest tick
+      update_next_tick(thr->wakeup_time);	// update next closest tick
     }else{			// if thread need to awake
-      e = list_remove(e);	// remove thread from sleep list
+      e = list_remove(&thr->elem);	// remove thread from sleep list
       thread_unblock(thr);	// unblock the tread
     }
   }
