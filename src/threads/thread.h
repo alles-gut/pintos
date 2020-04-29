@@ -103,22 +103,12 @@ struct thread
 
     // Owned by ../devices/timer.c
     int64_t wakeup_time;
-
-    // priority donation
-    int old_priority;
-    struct lock *wait_locks;
-    struct list locks;
-
-    // priority aging
-    int recent_cpu;
-    int nice;
   };
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
-extern bool thread_aging; //added for aging
 
 void thread_init (void);
 void thread_start (void);
@@ -150,9 +140,6 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
-// updated
-void thread_donation (struct thread *, int);
 
 // timer.c function
 void thread_sleep(int64_t ticks);

@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <stdint.h>
 #define FRA (1<<14)
 
 /*
