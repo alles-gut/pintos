@@ -410,11 +410,23 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  int old_priority = thread_current ()->priority;
-  thread_current ()->priority = new_priority;
+  struct thread *curr = thread_current ();
+  //dont need priority donation
+  if (curr->priority == curr->old_priority){
+    curr->priority = new_priority;
+    curr->old_priority = new_priority;
+  }
+  //need priority donation
+  else{
+    curr->old_priority = new_priority;
+  }
 
-  if (old_priority > new_priority)
-    thread_yield ();
+  //yield when ready thread priority is bigger than new
+  if (!list_empty (&ready_list)){
+    struct thread *top = list_entry(list_begin(&ready_list), struct thread, elem);
+    if (top != NULL && top->priority > new_priority){
+      thread_yield (); }
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -537,6 +549,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+
+  //priority donation
+  t->old_priority = priority;
+  t->wait_locks = NULL;
+  list_init (&t->locks);
 
   list_push_back (&all_list, &t->allelem);
 }
@@ -665,4 +682,15 @@ compare_priority (const struct list_elem * a_, const struct list_elem * b_, void
   const struct thread * b = list_entry(b_, struct thread, elem);
 
   return a->priority > b->priority;
+}
+
+void
+thread_donation(struct thread *L, int donated){
+  L->priority = donated;
+
+  if (L == thread_current () && !list_empty (&ready_list)){
+    struct thread *top = list_entry(list_begin(&ready_list), struct thread, elem);
+    if (top != NULL && top->priority > donated){
+      thread_yield (); }
+  }
 }

@@ -103,6 +103,11 @@ struct thread
 
     // Owned by ../devices/timer.c
     int64_t wakeup_time;
+
+    //priority donation
+    int old_priority;
+    struct lock *wait_locks;
+    struct list locks;
   };
 
 /* If false (default), use round-robin scheduler.
