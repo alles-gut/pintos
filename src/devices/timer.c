@@ -174,11 +174,19 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  thread_tick ();
 
   // function declared on thread.h
   // awake function
   if(get_next_tick() <= ticks){thread_awake(ticks);}
+
+  if (thread_mlfqs){
+    thread_current ()->recent_cpu = flt_pls_int(thread_current ()->recent_cpu, 1);
+    if (timer_ticks () % TIMER_FREQ == 0){
+      update_BSD ();}
+    if (timer_ticks () % 4 == 0){
+      update_priority ();}
+  }
+  thread_tick ();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

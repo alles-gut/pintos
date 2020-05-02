@@ -108,6 +108,9 @@ struct thread
     int old_priority;
     struct lock *wait_locks;
     struct list locks;
+
+    int recent_cpu;
+    int nice;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -151,5 +154,8 @@ void thread_sleep(int64_t ticks);
 void thread_awake(int64_t ticks);
 int64_t get_next_tick(void);
 void update_next_tick(int64_t ticks);
+
+void update_BSD(void);
+void update_priority(void);
 
 #endif /* threads/thread.h */

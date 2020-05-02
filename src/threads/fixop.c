@@ -1,3 +1,6 @@
+#include "threads/fixop.h"
+#include <stdint.h>
+
 int int_mis_flt (int i, int f)
 {
   return i*FRA - f;
