@@ -228,12 +228,16 @@ lock_acquire (struct lock *lock)
     if (currlock == NULL) break;
     holder = currlock->holder;
   }
-  }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
 
   lock->holder->wait_locks = NULL;
   list_insert_ordered(&(lock->holder->locks), &(lock->lockelem), compare_priority_lock, NULL);
+  }
+  else{
+  sema_down (&lock->semaphore);
+  lock->holder = thread_current ();
+  }
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
