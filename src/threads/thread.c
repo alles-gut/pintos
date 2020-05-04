@@ -77,7 +77,7 @@ static tid_t allocate_tid (void);
 // new
 static bool compare_priority (const struct list_elem *, const struct list_elem *, void* aux);
 int get_max_priority (void);
-void update_BSD (void);
+void update_recent_cpu (void);
 void update_priority (void);
 
 // Variable of alarm clock
@@ -318,7 +318,8 @@ thread_unblock (struct thread *t)
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
 
-  list_insert_ordered(&ready_list, &t->elem, compare_priority, NULL);
+  list_push_back (&ready_list, &t->elem);
+  list_sort(&ready_list, compare_priority, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -389,9 +390,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread)
-  { 
-    list_insert_ordered(&ready_list, &cur->elem, compare_priority, NULL);
-  }
+    list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -728,7 +727,7 @@ get_max_priority (void){
 }
 
 void
-update_BSD(void){
+update_recent_cpu(void){
   int ready_threads = list_size(&ready_list);
   struct thread *t;
   struct list_elem *e;

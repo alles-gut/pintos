@@ -182,7 +182,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   if (thread_mlfqs){
     thread_current ()->recent_cpu = flt_pls_int(thread_current ()->recent_cpu, 1);
     if (timer_ticks () % TIMER_FREQ == 0){
-      update_BSD ();}
+      update_recent_cpu ();}
     if (timer_ticks () % 4 == 0){
       update_priority ();}
   }

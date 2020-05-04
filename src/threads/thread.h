@@ -155,7 +155,7 @@ void thread_awake(int64_t ticks);
 int64_t get_next_tick(void);
 void update_next_tick(int64_t ticks);
 
-void update_BSD(void);
+void update_recent_cpu(void);
 void update_priority(void);
 
 #endif /* threads/thread.h */
