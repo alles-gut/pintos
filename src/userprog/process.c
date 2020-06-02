@@ -38,8 +38,13 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  // pass command name to name of thread which will be created
+  // strtok is kk to use, pintos user program run only single thread
+  char *olds;
+  char *cmd_name = strtok_r(file_name, " ", &olds);
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -54,12 +59,26 @@ start_process (void *file_name_)
   struct intr_frame if_;
   bool success;
 
+  //parsing
+  char *olds;
+  char *argv[256]; 
+  int argc = 0;
+  argv[0] = strtok_r (file_name, " ", &olds);
+  while(argv[argc] != NULL){
+    argc ++;
+    argv[argc] = strtok_r (NULL, " ", &olds);
+  }
+
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (argv[0], &if_.eip, &if_.esp);
+
+  //load success, set stack
+  if (success)
+    stack_esp (argv, argc, &if_.esp);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -76,6 +95,46 @@ start_process (void *file_name_)
   NOT_REACHED ();
 }
 
+//stack
+void stack_esp (char **argv, int argc, void **esp){
+  printf("\n####%d#%s#%s#%d####", argc,argv[0], argv[argc-1], argc);
+
+  char *addr[argc-1];
+  int input_length = 0;
+  int i;
+
+  for (i = argc-1; 0<=i; i--){
+    *esp -= (strlen(argv[i])+1);
+    input_length += strlen(argv[i])+1;
+    addr[i] = (uint32_t *)*esp;
+    strlcpy (*esp, argv[i], strlen(argv[i])+1);
+    argv[i] = *esp;
+  }
+
+  printf("###\n#\n");
+  *esp -= input_length % 4 != 0 ? 4 - (input_length % 4) : 0;
+  printf("###$$#\n#\n");
+  *esp -= 4;
+  *(int *)*esp = 0;
+  printf("###$$2#\n#\n");
+  for (i = argc-1; 0<=i; i--){
+    *esp -= 4;
+    *(uint32_t **)*esp = addr[i];
+  }
+  printf("###$$3#\n#\n");
+  *esp -= 4;
+  *(uint32_t **)*esp = *esp + 4;
+  printf("###$$4#\n#\n");
+  *esp -= 4;
+  *(int *)*esp = argc;
+
+  *esp -= 4;
+  *(int *)*esp = 0;
+  printf("###$$5#\n#\n");
+  printf("###$$6#\n#\n");
+  hex_dump(*esp, *esp, 100, 1);
+}
+
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
@@ -88,6 +147,9 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  //temporal
+  int i;
+  for (i = 0; i < 10000000000000 ; i++);
   return -1;
 }
 
