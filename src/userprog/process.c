@@ -21,22 +21,47 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+// 명령 행의 길이와 인자의 개수, 구분자가 널 문자로 설정된 명령 행을 나타냅니다.
+struct CmdLine
+{
+int length, argc;
+char cmd[0];
+};
+// 명령 행의 길이과 인자의 개수를 계산하고, 명령 행의 모든 구분자를 널 문자로 바꿉니다.
+// 명령 행을 널로 종결되는 통상적인 문자열로 취급할 경우 그것은 첫 번째 인수를 나타냅니다.
+static void
+parse_arguments (struct CmdLine *cmdline)
+{
+// prev 변수는 명령 행 파싱 중에 이전 문자를 저장하고 있습니다.
+char prev = 0, *cmd = cmdline->cmd;
+cmdline->argc = cmdline->length = 0;
+for (; *cmd; prev = *(cmd++), cmdline->length++)
+{
+if (*cmd == ' ')
+*cmd = 0;
+cmdline->argc += !prev && *cmd;
+cmdline->length -= !prev && !*cmd;
+}
+}
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute (const char *file_name) 
+process_execute (const char *cmd) 
 {
-  char *fn_copy;
+  struct CmdLine *cmdline;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
+  cmdline = palloc_get_page (0);
+  if (cmdline == NULL)
     return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+  strlcpy (cmdline->cmd,cmd, PGSIZE-sizeof (struct CmdLine));
+
+  parse_arguments(cmdline);
 
   // pass command name to name of thread which will be created
   // strtok is kk to use, pintos user program run only single thread
@@ -44,17 +69,48 @@ process_execute (const char *file_name)
   char *cmd_name = strtok_r(file_name, " ", &olds);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
+
+  tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy); //resolved
+
+  //tid = thread_create (cmdline->cmd, PRI_DEFAULT, start_process, cmdline);
+
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    palloc_free_page (cmdline); 
   return tid;
 }
 
-/* A thread function that loads a user process and starts it
-   running. */
+// 주어진 명령 행 정보와 추가적으로 필요한 정보들을 스택에 기록합니다.
 static void
-start_process (void *file_name_)
+argument_stack (struct CmdLine *cmdline, void **esp)
 {
+int argc;
+char *args_base, **argv_base, *cmd;
+argc = cmdline->argc;
+cmd = cmdline->cmd;
+*esp = args_base = (char *)*esp - (cmdline->length + 1);
+argv_base = (char **)*esp - (argc + 1);
+*esp = argv_base = (char **)((unsigned int)argv_base - (unsigned int)argv_base % 4);
+*(char ***)(*esp = (char ***)*esp - 1) = argv_base;
+*(int *)(*esp = (int *)*esp - 1) = argc;
+*(int *)(*esp = (int *)*esp - 1) = 0;
+while (argc--)
+{
+for (; !*cmd; cmd++);
+*(argv_base++) = args_base;
+for (; *cmd; *args_base = *cmd, args_base++, cmd++);
+*args_base = 0;
+args_base++;
+}
+*argv_base = 0;
+}
+
+
+/* A thread function that loads a user process and starts it
+running. */
+static void
+start_process (void *aux)
+{
+
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
@@ -85,15 +141,45 @@ start_process (void *file_name_)
   if (!success) 
     thread_exit ();
 
+  /*
+struct CmdLine *cmdline;
+struct intr_frame if_;
+struct thread *t;
+cmdline = aux;
+t = thread_current ();
+/* Initialize interrupt rame and load executable. */
+memset (&if_, 0, sizeof if_);
+if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
+if_.cs = SEL_UCSEG;
+if_.eflags = FLAG_IF | FLAG_MBS;
+t->load_succeeded = load (cmdline->cmd, &if_.eip, &if_.esp);
+// 부모 프로세스에서 exec 함수 수행을 재개해도 좋습니다.
+sema_up (&t->load_sema);
+/* If load failed, quit. */
+if (!t->load_succeeded)
+{
+palloc_free_page (cmdline);
+thread_exit ();
+}
+argument_stack (cmdline, &if_.esp);
+palloc_free_page (cmdline);
+/* Start the user process by simulating a return from an
+interrupt, implemented by intr_exit (in
+threads/intr-stubs.S). Because intr_exit takes all of its
+arguments on the stack in the form of a `struct intr_frame',
+we just point the stack pointer (%esp) to our stack frame
+and jump to it. */
+asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
+NOT_REACHED ();
+}
+*/
+
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
      arguments on the stack in the form of a `struct intr_frame',
-     we just point the stack pointer (%esp) to our stack frame
-     and jump to it. */
-  asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
-  NOT_REACHED ();
-}
+     we just point the stack pointer (%esp) to
 
 //stack
 void stack_esp (char **argv, int argc, void **esp){
@@ -140,8 +226,9 @@ void stack_esp (char **argv, int argc, void **esp){
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
+
   //temporal
   int volatile i, j= 0;
   for (i = 0; i < 10000000000 ; i++)
@@ -149,6 +236,24 @@ process_wait (tid_t child_tid UNUSED)
   //  if(i%100000==0){printf("print## : %d",i);}
   //}
   return 0;
+
+  /*
+  struct thread *child;
+int exit_status;
+// tid가 잘못되었거나 wait를 두 번 이상 반복하는 경우
+// 리스트에서 찾을 수 없고 결과적으로 -1을 반환합니다.
+if (!(child = thread_get_child(child_tid)))
+return -1;
+// 자식 프로세스가 종료되기를 기다립니다.
+sema_down (&child->wait_sema);
+// 자식 프로세스를 이 프로세스의 자식 리스트에서 제거합니다.
+list_remove (&child->child_elem);
+// 자식 프로세스의 종료 상태를 얻습니다.
+exit_status = child->exit_status;
+// 자식 프로세스를 완전히 제거해도 좋습니다.
+sema_up (&child->destroy_sema);
+return exit_status;
+*/
 }
 
 /* Free the current process's resources. */
@@ -158,8 +263,17 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+   // 이 프로세스가 사용한 파일을 정리합니다.
+for (cur->next_fd--; cur->next_fd >= 2; cur->next_fd--)
+file_close (cur->fd_table[cur->next_fd]);
+// 파일 디스크립터 테이블을 해제합니다.
+cur->fd_table += 2;
+palloc_free_page (cur->fd_table);
+file_close (cur->run_file);
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
+
   pd = cur->pagedir;
   if (pd != NULL) 
     {
@@ -191,7 +305,36 @@ process_activate (void)
      interrupts. */
   tss_update ();
 }
-
+
+int
+process_add_file (struct file *f)
+{
+struct thread *t;
+int fd;
+if (!f)
+return -1;
+t = thread_current ();
+fd = t->next_fd++;
+t->fd_table[fd] = f;
+return fd;
+}
+struct file *
+process_get_file (int fd)
+{
+struct thread *t = thread_current ();
+if (fd <= 1 || t->next_fd <= fd)
+return 0;
+return t->fd_table[fd];
+}
+void process_close_file (int fd)
+{
+struct thread *t = thread_current ();
+if (fd <= 1 || t->next_fd <= fd)
+return;
+file_close (t->fd_table[fd]);
+t->fd_table[fd] = 0;
+}
+
 /* We load ELF binaries.  The following definitions are taken
    from the ELF specification, [ELF1], more-or-less verbatim.  */
 
@@ -261,6 +404,8 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
                           bool writable);
 
+extern struct lock file_lock;
+
 /* Loads an ELF executable from FILE_NAME into the current thread.
    Stores the executable's entry point into *EIP
    and its initial stack pointer into *ESP.
@@ -281,13 +426,20 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
+  lock_acquire(&file_lock);
+
   /* Open executable file. */
   file = filesys_open (file_name);
   if (file == NULL) 
     {
+      lock_release (&file_lock);
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+
+  t->run_file = file_reopen(file);
+  file_deny_write (t->run_file);
+  lock_release (&file_lock);
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
