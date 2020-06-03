@@ -576,9 +576,12 @@ init_thread (struct thread *t, const char *name, int priority)
 
   list_push_back (&all_list, &t->allelem);
 
+#ifdef USERPROG
   sema_init(&t->child_lock, 0);
+  sema_init(&t->past_lock, 0);
   list_init(&t->child);
   list_push_back(&running_thread ()->child, &t->child_elem);
+#endif
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

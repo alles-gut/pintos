@@ -94,8 +94,7 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-//#ifdef USERPROG
-//#include "threads/synch.h"
+#ifdef USERPROG
 
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -103,7 +102,8 @@ struct thread
     struct list child;
     struct list_elem child_elem;
     struct semaphore child_lock;
-//#endif
+    struct semaphore past_lock;
+#endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

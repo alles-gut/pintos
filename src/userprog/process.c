@@ -140,15 +140,23 @@ void stack_esp (char **argv, int argc, void **esp){
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  //temporal
-  int volatile i, j= 0;
-  for (i = 0; i < 10000000000 ; i++)
-    j ++;
-  //  if(i%100000==0){printf("print## : %d",i);}
-  //}
-  return 0;
+  struct list_elem *child_elem;
+  struct thread *child_t;
+  int exit_status;
+
+  for (child_elem = list_begin(&thread_current ()->child); child_elem != list_end(&thread_current ()->child); child_elem = list_next(child_elem)){
+    child_t = list_entry(child_elem, struct thread, child_elem);
+    if (child_tid == child_t->tid){
+      sema_down(&child_t->child_lock);
+      exit_status = child_t->exit_status;
+      list_remove(&child_t->child_elem);
+      sema_up(&child_t->past_lock);
+      return exit_status;
+    }
+  }
+  return -1;
 }
 
 /* Free the current process's resources. */
@@ -174,6 +182,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  sema_up(&cur->child_lock);
+  sema_down(&cur->past_lock);
 }
 
 /* Sets up the CPU for running user code in the current
