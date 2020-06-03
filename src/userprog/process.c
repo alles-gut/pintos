@@ -97,7 +97,6 @@ start_process (void *file_name_)
 
 //stack
 void stack_esp (char **argv, int argc, void **esp){
-  printf("\n####%d#%s#%s#%d####", argc,argv[0], argv[argc-1], argc);
 
   char *addr[argc-1];
   int input_length = 0;
@@ -111,28 +110,24 @@ void stack_esp (char **argv, int argc, void **esp){
     argv[i] = *esp;
   }
 
-  printf("###\n#\n");
   *esp -= input_length % 4 != 0 ? 4 - (input_length % 4) : 0;
-  printf("###$$#\n#\n");
+
   *esp -= 4;
   *(int *)*esp = 0;
-  printf("###$$2#\n#\n");
+
   for (i = argc-1; 0<=i; i--){
     *esp -= 4;
     *(uint32_t **)*esp = addr[i];
   }
-  printf("###$$3#\n#\n");
+
   *esp -= 4;
   *(uint32_t **)*esp = *esp + 4;
-  printf("###$$4#\n#\n");
+
   *esp -= 4;
   *(int *)*esp = argc;
 
   *esp -= 4;
   *(int *)*esp = 0;
-  printf("###$$5#\n#\n");
-  printf("###$$6#\n#\n");
-  hex_dump(*esp, *esp, 100, 1);
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
@@ -149,7 +144,9 @@ process_wait (tid_t child_tid UNUSED)
 {
   //temporal
   int i;
-  for (i = 0; i < 10000000000000 ; i++);
+  for (i = 0; i < 10000000000 ; i++);
+  //  if(i%100000==0){printf("print## : %d",i);}
+  //}
   return -1;
 }
 
