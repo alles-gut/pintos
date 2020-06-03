@@ -45,8 +45,18 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
+  sema_down(&thread_current ()->load_lock);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+
+  struct list_elem *e;
+  struct thread *t;
+  for (e = list_begin(&thread_current ()->child); e != list_end(&thread_current ()->child); e=list_next(e)){
+    t = list_entry(e, struct thread, child_elem);
+    if (t->exit_status == -1){
+      return process_wait(tid);
+    }
+  }
   return tid;
 }
 
@@ -68,6 +78,7 @@ start_process (void *file_name_)
     argc ++;
     argv[argc] = strtok_r (NULL, " ", &olds);
   }
+  int i;
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -82,6 +93,7 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
+  sema_up(&thread_current ()->parent->load_lock);
   if (!success) 
     thread_exit ();
 
@@ -140,13 +152,22 @@ void stack_esp (char **argv, int argc, void **esp){
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  //temporal
-  int i;
-  for (i = 0; i < 10000000000 ; i++);
-  //  if(i%100000==0){printf("print## : %d",i);}
-  //}
+  struct list_elem *child_elem;
+  struct thread *child_t = NULL;
+  int exit_status;
+
+  for (child_elem = list_begin(&thread_current ()->child); child_elem != list_end(&thread_current ()->child); child_elem = list_next(child_elem)){
+    child_t = list_entry(child_elem, struct thread, child_elem);
+    if (child_tid == child_t->tid){
+      sema_down(&child_t->child_lock);
+      exit_status = child_t->exit_status;
+      list_remove(&child_t->child_elem);
+      sema_up(&child_t->past_lock);
+      return exit_status;
+    }
+  }
   return -1;
 }
 
@@ -173,6 +194,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  sema_up(&cur->child_lock);
+  sema_down(&cur->past_lock);
 }
 
 /* Sets up the CPU for running user code in the current
