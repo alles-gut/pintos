@@ -3,19 +3,20 @@
 #include "lib/user/syscall.h"
 
 void syscall_init (void);
+void bad_vaddr(const void *);
 
 void halt (void);
-void exit (int);
-pid_t exec (const char *);
+void exit (int status);
+pid_t exec (const char *file);
 int wait (pid_t);
-bool create (const char*, unsigned);
-bool remove (const char*);
-int open (const char*);
-int filesize (int);
-int read (int, void *, unsigned);
-int write (int, const void *, unsigned);
-void seek (int, unsigned);
-unsigned tell (int);
-void close (int);
+bool create (const char *file, unsigned initial_size);
+bool remove (const char *file);
+int open (const char *file);
+int filesize (int fd);
+int read (int fd, void *buffer, unsigned length);
+int write (int fd, const void *buffer, unsigned length);
+void seek (int fd, unsigned position);
+unsigned tell (int fd);
+void close (int fd);
 
 #endif /* userprog/syscall.h */

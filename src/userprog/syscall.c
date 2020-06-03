@@ -3,8 +3,10 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 
 static void syscall_handler (struct intr_frame *);
+void bad_vaddr(const void *);
 
 void
 syscall_init (void) 
@@ -15,17 +17,23 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  printf ("system call!: %d\n", *(uint32_t *)(f->esp));
-  hex_dump (f->esp, f->esp, 100, 1);
+  //printf ("system call!: %d\n", *(uint32_t *)(f->esp));
+  //hex_dump (f->esp, f->esp+20, 100, 1);
   switch (*(uint32_t *)(f->esp)){
     case SYS_HALT:
+      halt ();
       break;
     case SYS_EXIT:
+      bad_vaddr(f->esp + 4);
       exit(*(uint32_t *)(f->esp + 4));
       break;
     case SYS_EXEC:
+      bad_vaddr(f->esp + 4);
+      f->eax = exec((const char *)*(uint32_t *)(f->esp + 4));
       break;
     case SYS_WAIT:
+      bad_vaddr(f->esp + 4);
+      f->eax = wait((pid_t)*(uint32_t *)(f->esp + 4));
       break;
     case SYS_CREATE:
       break;
@@ -36,9 +44,16 @@ syscall_handler (struct intr_frame *f)
     case SYS_FILESIZE:
       break;
     case SYS_READ:
+      bad_vaddr(f->esp + 4);
+      bad_vaddr(f->esp + 8);
+      bad_vaddr(f->esp + 12);
+      f->eax = read((int)*(uint32_t *)(f->esp+4), (void *)*(uint32_t *)(f->esp + 8), (unsigned)*((uint32_t *)(f->esp +12)));
       break;
     case SYS_WRITE:
-      f->eax = write((int)*(uint32_t *)(f->esp+4), (void *)(uint32_t *)(f->esp + 8), (unsigned)*((uint32_t *)(f->esp +12)));
+      bad_vaddr(f->esp + 4);
+      bad_vaddr(f->esp + 8);
+      bad_vaddr(f->esp + 12);
+      f->eax = write((int)*(uint32_t *)(f->esp+4), (void *)*(uint32_t *)(f->esp + 8), (unsigned)*((uint32_t *)(f->esp +12)));
       break;
     case SYS_SEEK:
       break;
@@ -50,16 +65,16 @@ syscall_handler (struct intr_frame *f)
 }
 
 void
-exit (int stat) {
-  printf("%s: exit(%d)\n", thread_name (), stat);
-  thread_current ()->exit_status = stat;
+exit (int status) {
+  printf("%s: exit(%d)\n", thread_name (), status);
+  thread_current ()->exit_status = status;
   thread_exit ();
 }
 
 int
-write (int fd, const void *buf, unsigned size) {
+write (int fd, const void *buffer, unsigned size) {
   if (fd == 1){
-    putbuf(buf, size);
+    putbuf(buffer, size);
     return size;
   }
   return -1;
@@ -71,8 +86,8 @@ halt (void) {
 }
 
 pid_t
-exec (const char *cmd_line) {
-  return process_execute(cmd_line);
+exec (const char *file) {
+  return process_execute(file);
 }
 
 int
@@ -80,13 +95,21 @@ wait (pid_t pid){
   return process_wait(pid);
 }
 
-int read (int fd, void *buf, unsigned size){
+int
+read (int fd, void *buffer, unsigned size){
   int i;
   if (fd == 0){
     for(i = 0; i<size; i++){
-      if(((char *)buf)[i] == '\0')
+      if(((char *)buffer)[i] == '\0')
         break;
     }
   }
   return i;
+}
+
+void
+bad_vaddr(const void *vaddr){
+  if (!is_user_vaddr(vaddr)){
+    exit(-1);
+  }
 }

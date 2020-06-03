@@ -579,7 +579,14 @@ init_thread (struct thread *t, const char *name, int priority)
 #ifdef USERPROG
   sema_init(&t->child_lock, 0);
   sema_init(&t->past_lock, 0);
+  sema_init(&t->load_lock, 0);
+  t->parent = running_thread ();
   list_init(&t->child);
+
+  int i;
+  for (i = 0; i<128 ; i++)
+    t->fd[i] = NULL;
+
   list_push_back(&running_thread ()->child, &t->child_elem);
 #endif
 }
