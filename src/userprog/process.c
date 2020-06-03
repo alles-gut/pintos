@@ -106,7 +106,7 @@ void stack_esp (char **argv, int argc, void **esp){
     *esp -= (strlen(argv[i])+1);
     input_length += strlen(argv[i])+1;
     addr[i] = (uint32_t *)*esp;
-    strlcpy (*esp, argv[i], strlen(argv[i])+1);
+    memcpy (*esp, argv[i], strlen(argv[i])+1);
     argv[i] = *esp;
   }
 
@@ -143,11 +143,12 @@ int
 process_wait (tid_t child_tid UNUSED) 
 {
   //temporal
-  int i;
-  for (i = 0; i < 10000000000 ; i++);
+  int volatile i, j= 0;
+  for (i = 0; i < 10000000000 ; i++)
+    j ++;
   //  if(i%100000==0){printf("print## : %d",i);}
   //}
-  return -1;
+  return 0;
 }
 
 /* Free the current process's resources. */

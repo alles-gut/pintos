@@ -575,6 +575,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->nice = running_thread ()->nice;
 
   list_push_back (&all_list, &t->allelem);
+
+  sema_init(&t->child_lock, 0);
+  list_init(&t->child);
+  list_push_back(&running_thread ()->child, &t->child_elem);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
