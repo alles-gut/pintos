@@ -63,8 +63,17 @@ process_execute (const char *cmd)
 
   parse_arguments(cmdline);
 
+  // pass command name to name of thread which will be created
+  // strtok is kk to use, pintos user program run only single thread
+  char *olds;
+  char *cmd_name = strtok_r(file_name, " ", &olds);
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (cmdline->cmd, PRI_DEFAULT, start_process, cmdline);
+
+  tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy); //resolved
+
+  //tid = thread_create (cmdline->cmd, PRI_DEFAULT, start_process, cmdline);
+
   if (tid == TID_ERROR)
     palloc_free_page (cmdline); 
   return tid;
@@ -101,6 +110,38 @@ running. */
 static void
 start_process (void *aux)
 {
+
+  char *file_name = file_name_;
+  struct intr_frame if_;
+  bool success;
+
+  //parsing
+  char *olds;
+  char *argv[256]; 
+  int argc = 0;
+  argv[0] = strtok_r (file_name, " ", &olds);
+  while(argv[argc] != NULL){
+    argc ++;
+    argv[argc] = strtok_r (NULL, " ", &olds);
+  }
+
+  /* Initialize interrupt frame and load executable. */
+  memset (&if_, 0, sizeof if_);
+  if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
+  if_.cs = SEL_UCSEG;
+  if_.eflags = FLAG_IF | FLAG_MBS;
+  success = load (argv[0], &if_.eip, &if_.esp);
+
+  //load success, set stack
+  if (success)
+    stack_esp (argv, argc, &if_.esp);
+
+  /* If load failed, quit. */
+  palloc_free_page (file_name);
+  if (!success) 
+    thread_exit ();
+
+  /*
 struct CmdLine *cmdline;
 struct intr_frame if_;
 struct thread *t;
@@ -131,12 +172,49 @@ and jump to it. */
 asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
 NOT_REACHED ();
 }
+*/
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to
+
+//stack
+void stack_esp (char **argv, int argc, void **esp){
+
+  char *addr[argc-1];
+  int input_length = 0;
+  int i;
+
+  for (i = argc-1; 0<=i; i--){
+    *esp -= (strlen(argv[i])+1);
+    input_length += strlen(argv[i])+1;
+    addr[i] = (uint32_t *)*esp;
+    memcpy (*esp, argv[i], strlen(argv[i])+1);
+    argv[i] = *esp;
+  }
+
+  *esp -= input_length % 4 != 0 ? 4 - (input_length % 4) : 0;
+
+  *esp -= 4;
+  *(int *)*esp = 0;
+
+  for (i = argc-1; 0<=i; i--){
+    *esp -= 4;
+    *(uint32_t **)*esp = addr[i];
+  }
+
+  *esp -= 4;
+  *(uint32_t **)*esp = *esp + 4;
+
+  *esp -= 4;
+  *(int *)*esp = argc;
+
+  *esp -= 4;
+  *(int *)*esp = 0;
+}
 
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
@@ -150,6 +228,16 @@ NOT_REACHED ();
 int
 process_wait (tid_t child_tid) 
 {
+
+  //temporal
+  int volatile i, j= 0;
+  for (i = 0; i < 10000000000 ; i++)
+    j ++;
+  //  if(i%100000==0){printf("print## : %d",i);}
+  //}
+  return 0;
+
+  /*
   struct thread *child;
 int exit_status;
 // tid가 잘못되었거나 wait를 두 번 이상 반복하는 경우
@@ -165,6 +253,7 @@ exit_status = child->exit_status;
 // 자식 프로세스를 완전히 제거해도 좋습니다.
 sema_up (&child->destroy_sema);
 return exit_status;
+*/
 }
 
 /* Free the current process's resources. */
