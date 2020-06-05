@@ -40,8 +40,13 @@ process_execute (const char *file_name)
 
   // pass command name to name of thread which will be created
   // strtok is kk to use, pintos user program run only single thread
-  char *olds;
-  char *cmd_name = strtok_r(file_name, " ", &olds);
+  //char *olds;
+  //char *cmd_name = strtok_r(file_name, " ", &olds);  
+  char cmd_name[256];
+  int i;
+  strlcpy(cmd_name, file_name, strlen(file_name)+1);
+  for(i=0; cmd_name[i]!='\0' && cmd_name[i] != ' '; i++);
+  cmd_name[i] = '\0';
 
   if (filesys_open (cmd_name) == NULL) return -1;
 
@@ -97,7 +102,7 @@ start_process (void *file_name_)
   palloc_free_page (file_name);
   sema_up(&thread_current ()->parent->load_lock);
   if (!success) 
-    thread_exit ();
+    exit(-1);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -156,17 +161,17 @@ void stack_esp (char **argv, int argc, void **esp){
 int
 process_wait (tid_t child_tid) 
 {
-  struct list_elem *child_elem;
+  struct list_elem *child_e;
   struct thread *child_t = NULL;
   int exit_status;
 
-  for (child_elem = list_begin(&thread_current ()->child); child_elem != list_end(&thread_current ()->child); child_elem = list_next(child_elem)){
-    child_t = list_entry(child_elem, struct thread, child_elem);
+  for (child_e = list_begin(&(thread_current ()->child)); child_e != list_end(&(thread_current ()->child)); child_e = list_next(child_e)){
+    child_t = list_entry(child_e, struct thread, child_elem);
     if (child_tid == child_t->tid){
-      sema_down(&child_t->child_lock);
+      sema_down(&(child_t->child_lock));
       exit_status = child_t->exit_status;
-      list_remove(&child_t->child_elem);
-      sema_up(&child_t->past_lock);
+      list_remove(&(child_t->child_elem));
+      sema_up(&(child_t->past_lock));
       return exit_status;
     }
   }

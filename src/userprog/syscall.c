@@ -5,13 +5,16 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "filesys/off_t.h"
+#include "threads/synch.h"
 
 static void syscall_handler (struct intr_frame *);
 void bad_vaddr(const void *);
 
+struct lock filesys_lock;
 void
 syscall_init (void) 
 {
+  lock_init(&filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -102,10 +105,10 @@ halt (void) {
 
 void
 exit (int status) {
-  printf("%s: exit(%d)\n", thread_name (), status);
+  printf("%s: exit(%d)\n", thread_name (), status); 	// Problem 1
   thread_current ()->exit_status = status;
   int i;
-  for(i=0; i<128; i++){
+  for(i=0; i<200; i++){
     if(thread_current()->fd[i] != NULL) close(i);
   }
   thread_exit ();
@@ -136,25 +139,29 @@ bool remove (const char *file) {
 
 int open (const char *file) {
   int i;
+  int ret = -1;
   struct file* fp;
   if(file == NULL) exit(-1);
   bad_vaddr(file);
+  lock_acquire(&filesys_lock);
 
   fp = filesys_open(file);
   if (fp == NULL) {
-    return -1;
+    ret = -1;
   } else{
-    for(i=3; i<128; i++) {
+    for(i=3; i<200; i++) {
       if(thread_current()->fd[i] == NULL) {
         if(strcmp(thread_current()->name, file)==0){
           file_deny_write(fp);
         }
         thread_current()->fd[i] = fp;
-        return i;
+        ret= i;
+        break;
       }
     }
   }
-  return -1;
+  lock_release(&filesys_lock);
+  return ret;
 }
 
 int filesize (int fd) {
@@ -164,33 +171,43 @@ int filesize (int fd) {
 
 int read (int fd, void* buffer, unsigned size) {
   int i;
+  int ret;
   bad_vaddr(buffer);
+  lock_acquire(&filesys_lock);
   if (fd == 0) {
     for (i=0; i<size; i++){
       if (((char *)buffer)[i] == '\0') {
         break;
       }
     }
+    ret = i;
   } else if(fd > 2){
     if(thread_current()->fd[fd] == NULL) exit(-1);
-    return file_read(thread_current()->fd[fd], buffer, size);
+    ret= file_read(thread_current()->fd[fd], buffer, size);
   }
-  return i;
+  lock_release(&filesys_lock);
+  return ret;
 }
 
 int write (int fd, const void *buffer, unsigned size){
+  int ret = -1;
   bad_vaddr(buffer);
+  lock_acquire(&filesys_lock);
   if (fd == 1){
     putbuf(buffer, size);
-    return size;
+    ret= size;
   } else if(fd > 2){
-    if(thread_current()->fd[fd] == NULL) exit(-1);
+    if(thread_current()->fd[fd] == NULL){
+      lock_release(&filesys_lock);
+      exit(-1);
+    }
     if(thread_current()->fd[fd]->deny_write){
       file_deny_write(thread_current()->fd[fd]);
     }
-    return file_write(thread_current()->fd[fd], buffer, size);
+    ret= file_write(thread_current()->fd[fd], buffer, size);
   }
-  return -1;
+  lock_release(&filesys_lock);
+  return ret;
 }
 
 void seek (int fd, unsigned position){

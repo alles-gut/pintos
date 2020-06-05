@@ -555,6 +555,7 @@ is_thread (struct thread *t)
 static void
 init_thread (struct thread *t, const char *name, int priority)
 {
+  struct thread* pt = NULL;
   ASSERT (t != NULL);
   ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
   ASSERT (name != NULL);
@@ -578,16 +579,16 @@ init_thread (struct thread *t, const char *name, int priority)
 
 #ifdef USERPROG
   int i;
-  for (i = 0; i<128 ; i++)
+  for (i = 0; i<200 ; i++)
     t->fd[i] = NULL;
 
+  t->parent = running_thread ();
   sema_init(&t->child_lock, 0);
   sema_init(&t->past_lock, 0);
   sema_init(&t->load_lock, 0);
-  t->parent = running_thread ();
   list_init(&t->child);
 
-  list_push_back(&running_thread ()->child, &t->child_elem);
+  list_push_back(&(running_thread ()->child), &(t->child_elem));
 #endif
 }
 
