@@ -43,6 +43,8 @@ process_execute (const char *file_name)
   char *olds;
   char *cmd_name = strtok_r(file_name, " ", &olds);
 
+  if (filesys_open (cmd_name) == NULL) return -1;
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
   sema_down(&thread_current ()->load_lock);
