@@ -105,7 +105,7 @@ struct thread
     struct semaphore past_lock;
     struct semaphore load_lock;
     struct thread *parent;
-    struct file* fd[128];
+    struct file* fd[200];
 #endif
 
     /* Owned by thread.c. */
